@@ -14,7 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      history: {
+        Row: {
+          change_amount: number
+          date: string
+          id: string
+          item_name: string
+          username: string
+        }
+        Insert: {
+          change_amount: number
+          date?: string
+          id?: string
+          item_name: string
+          username: string
+        }
+        Update: {
+          change_amount?: number
+          date?: string
+          id?: string
+          item_name?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      inventory: {
+        Row: {
+          created_at: string
+          id: string
+          last_updated: string
+          name: string
+          qr_code: string
+          quantity: number
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_updated?: string
+          name: string
+          qr_code: string
+          quantity?: number
+          unit: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_updated?: string
+          name?: string
+          qr_code?: string
+          quantity?: number
+          unit?: string
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string
+          id: string
+          pin_hash: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pin_hash: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pin_hash?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
