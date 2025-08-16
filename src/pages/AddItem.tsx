@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import QRCode from 'qrcode';
 
 const AddItem: React.FC = () => {
   const [name, setName] = useState('');
@@ -15,20 +15,6 @@ const AddItem: React.FC = () => {
   const [unit, setUnit] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  const generateQRCode = async (itemData: any): Promise<string> => {
-    try {
-      const qrData = JSON.stringify({
-        id: itemData.id,
-        name: itemData.name,
-        type: 'inventory_item'
-      });
-      return await QRCode.toDataURL(qrData);
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-      throw error;
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,32 +25,29 @@ const AddItem: React.FC = () => {
 
     setLoading(true);
     try {
-      // Insert item first to get the ID
+      // Insert item with a simple QR identifier instead of full QR code data
+      const qrIdentifier = `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
       const { data, error } = await supabase
         .from('inventory')
         .insert({
           name: name.trim(),
           quantity: parseFloat(quantity) || 0,
           unit: unit.trim(),
-          qr_code: `temp_${Date.now()}` // Temporary QR code
+          qr_code: qrIdentifier
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
 
-      // Generate QR code with the actual item data
-      const qrCodeData = await generateQRCode(data);
-      
-      // Update the item with the real QR code
-      const { error: updateError } = await supabase
-        .from('inventory')
-        .update({ qr_code: qrCodeData })
-        .eq('id', data.id);
-
-      if (updateError) throw updateError;
-
+      console.log('Item successfully added:', data);
       toast.success('Položka úspěšně přidána');
+      
+      // Navigate to inventory page after successful addition
       navigate('/inventory');
     } catch (error) {
       console.error('Error adding item:', error);
@@ -157,7 +140,7 @@ const AddItem: React.FC = () => {
         <div className="mt-6 p-4 bg-muted rounded-lg">
           <h3 className="font-semibold mb-2">Automatické funkce:</h3>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• QR kód bude automaticky vygenerován pro každou položku</li>
+            <li>• QR identifikátor bude automaticky vygenerován pro každou položku</li>
             <li>• Můžete později skenovat QR kód pro rychlé úpravy množství</li>
             <li>• Všechny změny se zaznamenávají do historie</li>
           </ul>
