@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       history: {
         Row: {
+          cafe_id: string | null
           change_amount: number
           date: string
           id: string
@@ -23,6 +24,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          cafe_id?: string | null
           change_amount: number
           date?: string
           id?: string
@@ -30,6 +32,7 @@ export type Database = {
           username: string
         }
         Update: {
+          cafe_id?: string | null
           change_amount?: number
           date?: string
           id?: string
@@ -40,6 +43,7 @@ export type Database = {
       }
       inventory: {
         Row: {
+          cafe_id: string | null
           created_at: string
           id: string
           last_updated: string
@@ -49,6 +53,7 @@ export type Database = {
           unit: string
         }
         Insert: {
+          cafe_id?: string | null
           created_at?: string
           id?: string
           last_updated?: string
@@ -58,6 +63,7 @@ export type Database = {
           unit: string
         }
         Update: {
+          cafe_id?: string | null
           created_at?: string
           id?: string
           last_updated?: string
@@ -65,6 +71,33 @@ export type Database = {
           qr_code?: string
           quantity?: number
           unit?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          cafe_id: string
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cafe_id: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cafe_id?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
