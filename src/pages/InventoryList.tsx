@@ -3,28 +3,41 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { InventoryItem } from '@/types';
-import { useAuth } from '@/hooks/useAuth';
-import { Plus, Minus, Search, LogOut, History, QrCode, PackagePlus } from 'lucide-react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { Plus, Minus, Search, LogOut, History, QrCode, PackagePlus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const InventoryList: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const { user, logout } = useAuth();
+  const { user, profile, signOut, loading: authLoading } = useSupabaseAuth();
   const navigate = useNavigate();
 
+  // Redirect to auth if not authenticated
   useEffect(() => {
-    fetchItems();
-  }, []);
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user && profile) {
+      fetchItems();
+    }
+  }, [user, profile]);
 
   const fetchItems = async () => {
+    if (!profile?.cafeId) return;
+    
     try {
       const { data, error } = await supabase
         .from('inventory')
         .select('*')
+        .eq('cafe_id', profile.cafeId)
         .order('name');
 
       if (error) throw error;
@@ -36,7 +49,8 @@ const InventoryList: React.FC = () => {
         unit: item.unit,
         qrCode: item.qr_code,
         lastUpdated: item.last_updated,
-        createdAt: item.created_at
+        createdAt: item.created_at,
+        cafeId: item.cafe_id
       }));
 
       setItems(inventoryItems);
@@ -50,7 +64,7 @@ const InventoryList: React.FC = () => {
 
   const updateQuantity = async (itemId: string, change: number) => {
     const item = items.find(i => i.id === itemId);
-    if (!item || !user) return;
+    if (!item || !user || !profile) return;
 
     const newQuantity = Math.max(0, item.quantity + change);
 
@@ -69,7 +83,8 @@ const InventoryList: React.FC = () => {
         .insert({
           item_name: item.name,
           change_amount: change,
-          username: user.username
+          username: user.email || 'Neznámý uživatel',
+          cafe_id: profile.cafeId
         });
 
       if (historyError) throw historyError;
@@ -86,16 +101,41 @@ const InventoryList: React.FC = () => {
     }
   };
 
+  const deleteItem = async (itemId: string) => {
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    try {
+      const { error } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      // Update local state
+      setItems(items.filter(i => i.id !== itemId));
+      toast.success('Položka byla smazána');
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast.error('Chyba při mazání položky');
+    }
+  };
+
   const filteredItems = items.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">Načítám položky...</div>
+        <div className="text-center">Načítám...</div>
       </div>
     );
+  }
+
+  if (!user) {
+    return null; // Will redirect in useEffect
   }
 
   return (
@@ -104,8 +144,9 @@ const InventoryList: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold">Sklad - {user?.username}</h1>
+            <h1 className="text-3xl font-bold">Sklad - {profile?.displayName || user?.email}</h1>
             <p className="text-muted-foreground">Celkem položek: {items.length}</p>
+            <p className="text-xs text-muted-foreground">Kavárna ID: {profile?.cafeId}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => navigate('/add-item')} className="gap-2">
@@ -120,7 +161,7 @@ const InventoryList: React.FC = () => {
               <QrCode className="w-4 h-4" />
               Skenovat QR
             </Button>
-            <Button onClick={logout} variant="destructive" className="gap-2">
+            <Button onClick={signOut} variant="destructive" className="gap-2">
               <LogOut className="w-4 h-4" />
               Odhlásit
             </Button>
@@ -152,24 +193,55 @@ const InventoryList: React.FC = () => {
                   </div>
                   
                   <div className="flex items-center justify-between gap-2">
-                    <Button
-                      onClick={() => updateQuantity(item.id, -1)}
-                      variant="outline"
-                      size="sm"
-                      className="h-10 w-10 p-0"
-                      disabled={item.quantity <= 0}
-                    >
-                      <Minus className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => updateQuantity(item.id, -1)}
+                        variant="outline"
+                        size="sm"
+                        className="h-10 w-10 p-0"
+                        disabled={item.quantity <= 0}
+                      >
+                        <Minus className="w-4 h-4" />
+                      </Button>
+                      
+                      <Button
+                        onClick={() => updateQuantity(item.id, 1)}
+                        variant="outline"
+                        size="sm"
+                        className="h-10 w-10 p-0"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
                     
-                    <Button
-                      onClick={() => updateQuantity(item.id, 1)}
-                      variant="outline"
-                      size="sm"
-                      className="h-10 w-10 p-0"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-10 w-10 p-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Smazat položku</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Opravdu chcete smazat položku "{item.name}"? Tuto akci nelze vrátit zpět.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Zrušit</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => deleteItem(item.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Smazat
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                   
                   <div className="text-xs text-muted-foreground">

@@ -1,72 +1,40 @@
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./hooks/useAuth";
-import Login from "./pages/Login";
-import InventoryList from "./pages/InventoryList";
-import AddItem from "./pages/AddItem";
-import History from "./pages/History";
-import ScanQR from "./pages/ScanQR";
-import NotFound from "./pages/NotFound";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from '@/components/ui/sonner';
+import { SupabaseAuthProvider } from '@/hooks/useSupabaseAuth';
+import { AuthProvider } from '@/hooks/useAuth'; // Keep for backward compatibility
+import Index from '@/pages/Index';
+import Login from '@/pages/Login';
+import Auth from '@/pages/Auth';
+import InventoryList from '@/pages/InventoryList';
+import AddItem from '@/pages/AddItem';
+import History from '@/pages/History';
+import ScanQR from '@/pages/ScanQR';
+import NotFound from '@/pages/NotFound';
+import './App.css';
 
-const queryClient = new QueryClient();
-
-// Protected Route Component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
-};
-
-// Public Route Component (redirect if logged in)
-const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
-  return !user ? <>{children}</> : <Navigate to="/inventory" replace />;
-};
-
-const AppRoutes = () => (
-  <Routes>
-    <Route path="/login" element={
-      <PublicRoute>
-        <Login />
-      </PublicRoute>
-    } />
-    <Route path="/inventory" element={
-      <ProtectedRoute>
-        <InventoryList />
-      </ProtectedRoute>
-    } />
-    <Route path="/add-item" element={
-      <ProtectedRoute>
-        <AddItem />
-      </ProtectedRoute>
-    } />
-    <Route path="/history" element={
-      <ProtectedRoute>
-        <History />
-      </ProtectedRoute>
-    } />
-    <Route path="/scan" element={
-      <ProtectedRoute>
-        <ScanQR />
-      </ProtectedRoute>
-    } />
-    <Route path="/" element={<Navigate to="/inventory" replace />} />
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-);
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <SupabaseAuthProvider>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen bg-background">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/inventory" element={<InventoryList />} />
+              <Route path="/add-item" element={<AddItem />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/scan" element={<ScanQR />} />
+              <Route path="/404" element={<NotFound />} />
+              <Route path="*" element={<Navigate to="/404" replace />} />
+            </Routes>
+            <Toaster />
+          </div>
+        </Router>
+      </AuthProvider>
+    </SupabaseAuthProvider>
+  );
+}
 
 export default App;

@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -14,7 +15,15 @@ const AddItem: React.FC = () => {
   const [quantity, setQuantity] = useState('0');
   const [unit, setUnit] = useState('');
   const [loading, setLoading] = useState(false);
+  const { user, profile, loading: authLoading } = useSupabaseAuth();
   const navigate = useNavigate();
+
+  // Redirect to auth if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,9 +32,14 @@ const AddItem: React.FC = () => {
       return;
     }
 
+    if (!profile?.cafeId) {
+      toast.error('Chyba: Chybí ID kavárny');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Insert item with a simple QR identifier instead of full QR code data
+      // Insert item with a simple QR identifier and cafe_id
       const qrIdentifier = `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const { data, error } = await supabase
@@ -34,7 +48,8 @@ const AddItem: React.FC = () => {
           name: name.trim(),
           quantity: parseFloat(quantity) || 0,
           unit: unit.trim(),
-          qr_code: qrIdentifier
+          qr_code: qrIdentifier,
+          cafe_id: profile.cafeId
         })
         .select()
         .single();
@@ -56,6 +71,18 @@ const AddItem: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">Načítám...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect in useEffect
+  }
 
   return (
     <div className="min-h-screen bg-background p-4">
