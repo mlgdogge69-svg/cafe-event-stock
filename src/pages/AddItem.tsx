@@ -10,79 +10,47 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
-const AddItem: React.FC = () => {
-  const [name, setName] = useState('');
-  const [quantity, setQuantity] = useState('0');
-  const [unit, setUnit] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { user, profile, loading: authLoading } = useSupabaseAuth();
-  const navigate = useNavigate();
-
-  // Redirect to auth if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    }
-  }, [user, authLoading, navigate]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !unit.trim()) {
-      toast.error('Vyplňte všechna povinná pole');
-      return;
-    }
-
-    if (!profile?.cafeId) {
-      toast.error('Chyba: Chybí ID kavárny');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Insert item with a simple QR identifier and cafe_id
-      const qrIdentifier = `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      const { data, error } = await supabase
-        .from('inventory')
-        .insert({
-          name: name.trim(),
-          quantity: parseFloat(quantity) || 0,
-          unit: unit.trim(),
-          qr_code: qrIdentifier,
-          cafe_id: profile.cafeId
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
-      }
-
-      console.log('Item successfully added:', data);
-      toast.success('Položka úspěšně přidána');
-      
-      // Navigate to inventory page after successful addition
-      navigate('/inventory');
-    } catch (error) {
-      console.error('Error adding item:', error);
-      toast.error('Chyba při přidávání položky');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">Načítám...</div>
-      </div>
-    );
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!name.trim() || !unit.trim()) {
+    toast.error('Vyplňte všechna povinná pole');
+    return;
   }
 
-  if (!user) {
-    return null; // Will redirect in useEffect
+  setLoading(true);
+  try {
+    // Insert item with a simple QR identifier instead of full QR code data
+    const qrIdentifier = `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const { data, error } = await supabase
+      .from('inventory')
+      .insert({
+        name: name.trim(),
+        quantity: parseFloat(quantity) || 0,
+        unit: unit.trim(),
+        qr_code: qrIdentifier
+      })
+      .select()
+      .maybeSingle();   // ✅ použijeme místo .single()
+
+    if (error) {
+      console.error('Database error:', error);
+      throw error;
+    }
+
+    console.log('Item successfully added:', data);
+    toast.success('Položka úspěšně přidána');
+    
+    // Navigate to inventory page after successful addition
+    navigate('/inventory');
+  } catch (error) {
+    console.error('Error adding item:', error);
+    toast.error('Chyba při přidávání položky');
+  } finally {
+    setLoading(false);
   }
+};
+
 
   return (
     <div className="min-h-screen bg-background p-4">
